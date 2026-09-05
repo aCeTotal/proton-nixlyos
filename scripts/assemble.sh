@@ -25,6 +25,16 @@ rm -rf "$STAGE"
 mkdir -p "$STAGE/$BUILD_NAME"
 cp -a "$redist/." "$STAGE/$BUILD_NAME/"
 
+# The Makefile writes "<timestamp> <git describe>" to version, but our
+# tagless partial clone makes git describe fail, leaving only the
+# timestamp - protonfixes then crashes reading version_name. Fill in
+# the build name.
+read -r ts name < "$STAGE/$BUILD_NAME/version" || true
+if [ -z "${name:-}" ]; then
+    echo "$ts $BUILD_NAME" > "$STAGE/$BUILD_NAME/version"
+    log "version file: $ts $BUILD_NAME"
+fi
+
 # The cachyos fork patches make the Proton build package protonfixes
 # itself; only add it here if this redist predates that.
 if [ ! -d "$STAGE/$BUILD_NAME/protonfixes" ]; then
