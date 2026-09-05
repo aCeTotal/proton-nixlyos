@@ -1,0 +1,21 @@
+Resolve make's SHELL from PATH instead of hardcoding /bin/bash.
+
+NixOS has no /bin/bash, and passing SHELL=... on the make command line
+does not work either: make forwards command-line overrides to the
+sub-make it launches inside the Steam Runtime container, where the nix
+store path does not exist. $(shell command -v bash) is evaluated
+separately by each make - host and container - so both get a bash that
+exists. /bin/sh (used by $(shell)) exists on both.
+
+diff --git a/Makefile.in b/Makefile.in
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -13,7 +13,7 @@ MFLAGS += V=1 VERBOSE=1
+ --verbose? := --verbose
+ endif
+
+-SHELL := /bin/bash
++SHELL := $(shell command -v bash)
+
+ ##
+ ## General/global config
