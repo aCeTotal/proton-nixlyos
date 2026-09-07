@@ -60,7 +60,7 @@ if ! grep -q '^import protonfixes' "$STAGE/$BUILD_NAME/proton"; then
 fi
 
 mkdir -p "$OUT"
-name="$BUILD_NAME-$(date +%Y%m%d)-$(git -C "$SRC" rev-parse --short HEAD)"
+name="$BUILD_NAME-$(date +%Y%m%d)-$(git -C "$SRC" rev-parse --short HEAD)-$PN_VARIANT"
 log "packing $name.tar.xz"
 tar -C "$STAGE" -cJf "$OUT/$name.tar.xz" "$BUILD_NAME"
 (cd "$OUT" && sha256sum "$name.tar.xz" > "$name.tar.xz.sha256")

@@ -9,11 +9,18 @@ PN_STATE="${PN_STATE:-$PWD}"
 WORK="$PN_STATE/work"
 OUT="$PN_STATE/out"
 SRC="$WORK/proton"
-BUILD="$WORK/build"
 PROTONFIXES="$SRC/protonfixes"
-STAGE="$WORK/stage"
 
 BUILD_NAME="${PN_BUILD_NAME:-proton-nixlyos}"
+
+# Build variant: v3 (x86-64-v3) or generic (baseline x86-64). Fetch/patch
+# state is shared; build and stage trees are per-variant.
+PN_VARIANT="${PN_VARIANT:-v3}"
+case "$PN_VARIANT" in v3|generic) ;; *)
+    echo "unknown PN_VARIANT '$PN_VARIANT' (v3|generic)" >&2; exit 1 ;;
+esac
+BUILD="$WORK/build-$PN_VARIANT"
+STAGE="$WORK/stage-$PN_VARIANT"
 
 export CCACHE_DIR="${CCACHE_DIR:-$WORK/ccache}"
 

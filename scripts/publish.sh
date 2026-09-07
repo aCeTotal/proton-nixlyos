@@ -17,30 +17,48 @@ gh() {
     fi
 }
 
-tarball="$(ls -t "$OUT"/*.tar.xz 2>/dev/null | head -1)"
-[ -n "$tarball" ] || die "no tarball in $OUT - run the build first"
-name="$(basename "$tarball" .tar.xz)"
-tag="${name#"$BUILD_NAME"-}"
+# Tag from the newest tarball; both variants of that tag must exist.
+newest="$(ls -t "$OUT"/*.tar.xz 2>/dev/null | head -1)"
+[ -n "$newest" ] || die "no tarball in $OUT - run the build first"
+tag="$(basename "$newest" .tar.xz)"
+tag="${tag#"$BUILD_NAME"-}"
+tag="${tag%-v3}"; tag="${tag%-generic}"
 
-log "publishing $name (tag $tag)"
+assets=()
+for variant in v3 generic; do
+    t="$OUT/$BUILD_NAME-$tag-$variant.tar.xz"
+    [ -f "$t" ] || die "missing $variant tarball for tag $tag - run the build first"
+    assets+=("$t" "$t.sha256")
+done
+
+log "publishing $BUILD_NAME-$tag (v3 + generic)"
 if ! gh release view "$tag" --repo "$REPO" > /dev/null 2>&1; then
     gh release create "$tag" --repo "$REPO" \
-        --title "$name" --notes "Automated build $name" \
-        "$tarball" "$tarball.sha256"
+        --title "$BUILD_NAME-$tag" --notes "Automated build $BUILD_NAME-$tag" \
+        "${assets[@]}"
 else
     warn "release $tag already exists, uploading assets with --clobber"
-    gh release upload "$tag" --repo "$REPO" --clobber \
-        "$tarball" "$tarball.sha256"
+    gh release upload "$tag" --repo "$REPO" --clobber "${assets[@]}"
 fi
 
 pin="$NIXLYPKGS/pkgs/proton-nixlyos/pin.json"
 [ -d "$(dirname "$pin")" ] || die "nixlypkgs not found at $NIXLYPKGS (set NIXLYPKGS=...)"
-hash="$(nix hash file --sri "$tarball")"
+hash_v3="$(nix hash file --sri "$OUT/$BUILD_NAME-$tag-v3.tar.xz")"
+hash_generic="$(nix hash file --sri "$OUT/$BUILD_NAME-$tag-generic.tar.xz")"
+url="https://github.com/$REPO/releases/download/$tag/$BUILD_NAME-$tag"
 cat > "$pin" <<EOF
 {
   "version": "$tag",
-  "url": "https://github.com/$REPO/releases/download/$tag/$name.tar.xz",
-  "hash": "$hash"
+  "variants": {
+    "v3": {
+      "url": "$url-v3.tar.xz",
+      "hash": "$hash_v3"
+    },
+    "generic": {
+      "url": "$url-generic.tar.xz",
+      "hash": "$hash_generic"
+    }
+  }
 }
 EOF
 log "updated $pin"
